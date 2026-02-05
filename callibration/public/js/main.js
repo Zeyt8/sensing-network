@@ -27,8 +27,6 @@ const bufferedCapValues = [];
 const bufferedSelectedNodes = [];
 
 let iirFilteredValue = null;
-let kalmanEstimate = null;
-let kalmanP = 1.0;
 var lastTime = 0.0;
 
 const demoData = [];
@@ -81,8 +79,6 @@ const processData = (data) => {
     const startTime = lastTime + cutThres;
     const { times, values } = dataByNode[node];
     config[node] = estimateMean(times, values, startTime);
-    // config[node] = estimateIIRLowPass(times, values, startTime, tau);
-    // config[node] = estimateKalman(times, values, startTime, R);
   }
 
   socket.emit("endProcessing", JSON.stringify(config));
@@ -186,54 +182,19 @@ socket.on("data", data => {
       "value": capValue
     });
   } else if (mode == "demo") {
-    // IIR low-pass
-    /*const filteredValue = applyIIRLowPass(bufferedCapValues.length > 0 ? bufferedCapValues[bufferedCapValues.length -1] : parseFloat(capValue), parseFloat(capValue), dt, tau);
-    bufferedCapValues.push(filteredValue);
-    if (bufferedCapValues.length > bufferSizeForCapValues / bufferSizeDiv) {
-      const selectedNode = selectCloseCapValNode(filteredValue, config);
-      document.querySelector("#selectedNode").innerHTML = `Node ${selectedNode}`;
-    }*/
-    // Kalman
-    /*const {newEstimate, newP} = applyKalman(bufferedCapValues.length > 0 ? bufferedCapValues[bufferedCapValues.length -1] : parseFloat(capValue), newP, parseFloat(capValue), R);
-    bufferedCapValues.push(newEstimate);
-    if (bufferedCapValues.length > bufferSizeForCapValues / bufferSizeDiv) {
-      const selectedNode = selectCloseCapValNode(newEstimate, config);
-      document.querySelector("#selectedNode").innerHTML = `Node ${selectedNode}`;
-    }*/
-    const time = performance.now() - demoStartTime;
     const rawValue = parseFloat(capValue);
-
-    const dataPoint = {
-      "time": time,
-      "rawValue": rawValue,
-      "selectedNode": -1
-    };
-
-    if (iirFilteredValue === null) {
-      iirFilteredValue = rawValue;
+   
+   if (iirFilteredValue === null) {
+     iirFilteredValue = rawValue;
     } else {
       iirFilteredValue = applyIIRLowPass(iirFilteredValue, rawValue, dt, tau);
     }
-    console.log(iirFilteredValue);
-    dataPoint.iirFiltered = iirFilteredValue;
-
-    if (kalmanEstimate === null) {
-      kalmanEstimate = rawValue;
-    } else {
-      const { newEstimate, newP } = applyKalman(kalmanEstimate, kalmanP, rawValue, R);
-      kalmanEstimate = newEstimate;
-      kalmanP = newP;
-    }
-    console.log(kalmanEstimate);
-    dataPoint.kalmanFiltered = kalmanEstimate;
-
+    
+    bufferedCapValues.push(iirFilteredValue);
     // Moving average
-    bufferedCapValues.push(rawValue);
     if (bufferedCapValues.length > bufferSizeForCapValues / bufferSizeDiv) {
-      bufferedCapValues.shift()
-      const aveCapValue = bufferedCapValues.reduce((cum, val) => cum + val) / (bufferSizeForCapValues / bufferSizeDiv);
-      dataPoint.movingAverageFiltered = aveCapValue;
-      const tmpSelectedNode = selectCloseCapValNode(aveCapValue, config);
+      bufferedCapValues.shift();
+      const tmpSelectedNode = selectCloseCapValNode(iirFilteredValue, config);
       bufferedSelectedNodes.push(tmpSelectedNode);
 
       if (bufferedSelectedNodes.length > bufferSizeForSelectedNodes) {
@@ -260,10 +221,7 @@ socket.on("data", data => {
         }
         dataPoint.selectedNode = selectedNode;
         document.querySelector("#selectedNode").innerHTML = `Node ${selectedNode}`;
-      } else {
-        dataPoint.movingAverageFiltered = null; // Not enough data yet
       }
     }
-    demoData.push(dataPoint);
   }
 });
