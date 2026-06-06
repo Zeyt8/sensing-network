@@ -15,7 +15,7 @@ function processData(data) {
       dataByNode[node].values.push(parseFloat(d.value));
     }
   }
-  
+
   const cutThres = 1500; // in ms
   const tau = 300;
   const R = 0.05;
@@ -40,7 +40,7 @@ function processData(data) {
   console.log("IIR Low-Pass Configuration:", config2);
   console.log("Kalman Configuration:", config3);
 
-    const vegaLiteSpec = {
+  const vegaLiteSpec = {
     $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
     description: 'Values from Arduino.',
     width: 800,
@@ -59,8 +59,8 @@ function processData(data) {
 <html>
 <head>
   <meta charset="utf-8">
-  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega@6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@6"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
   <style>
     body {

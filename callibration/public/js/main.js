@@ -20,8 +20,7 @@ let intervalId = null;
 
 // for selection demo
 let config = null;
-const bufferSizeForCapValues = 10;
-const bufferSizeForSelectedNodes = 10;
+const bufferSizeForSelectedNodes = 1;
 let prevSelectedNode = -1;
 const bufferedCapValues = [];
 const bufferedSelectedNodes = [];
@@ -138,8 +137,6 @@ document.querySelector("#demoStartButton").addEventListener("click", () => {
   prevSelectedNode = -1;
 
   iirFilteredValue = null;
-  kalmanEstimate = null;
-  kalmanP = 1.0;
 
   if (config) {
     socket.emit("io", {
@@ -182,46 +179,48 @@ socket.on("data", data => {
       "value": capValue
     });
   } else if (mode == "demo") {
+    const time = performance.now() - demoStartTime;
     const rawValue = parseFloat(capValue);
-   
+
+    const dataPoint = {
+      "time": time,
+      "rawValue": rawValue,
+      "selectedNode": -1
+    };
+
    if (iirFilteredValue === null) {
-     iirFilteredValue = rawValue;
+      iirFilteredValue = rawValue;
     } else {
       iirFilteredValue = applyIIRLowPass(iirFilteredValue, rawValue, dt, tau);
     }
-    
-    bufferedCapValues.push(iirFilteredValue);
+
     // Moving average
-    if (bufferedCapValues.length > bufferSizeForCapValues / bufferSizeDiv) {
-      bufferedCapValues.shift();
-      const tmpSelectedNode = selectCloseCapValNode(iirFilteredValue, config);
-      bufferedSelectedNodes.push(tmpSelectedNode);
+    const tmpSelectedNode = selectCloseCapValNode(iirFilteredValue, config);
+    bufferedSelectedNodes.push(tmpSelectedNode);
 
-      if (bufferedSelectedNodes.length > bufferSizeForSelectedNodes) {
-        bufferedSelectedNodes.shift();
-        const counts = bufferedSelectedNodes.reduce((acc, node) => {
-          if (node in acc) {
-            acc[node]++;
-          } else {
-            acc[node] = 1;
-          }
-          return acc;
-        }, {});
-
-        const sortedNodesByCounts = Object.keys(counts).sort((a, b) => - counts[a] + counts[b]);
-        let mostFreqNode = sortedNodesByCounts[0];
-        let selectedNode = -1;
-
-        if (counts[mostFreqNode] > bufferSizeForSelectedNodes * 0.8) {
-          selectedNode = mostFreqNode;
-          prevSelectedNode = selectedNode;
-          bufferedCapValues.length = 0;
+    if (bufferedSelectedNodes.length > bufferSizeForSelectedNodes) {
+      bufferedSelectedNodes.shift();
+      const counts = bufferedSelectedNodes.reduce((acc, node) => {
+        if (node in acc) {
+          acc[node]++;
         } else {
-          selectedNode = prevSelectedNode;
+          acc[node] = 1;
         }
-        dataPoint.selectedNode = selectedNode;
-        document.querySelector("#selectedNode").innerHTML = `Node ${selectedNode}`;
+        return acc;
+      }, {});
+
+      const sortedNodesByCounts = Object.keys(counts).sort((a, b) => - counts[a] + counts[b]);
+      let mostFreqNode = sortedNodesByCounts[0];
+      let selectedNode = -1;
+
+      if (counts[mostFreqNode] > bufferSizeForSelectedNodes * 0.8) {
+        selectedNode = mostFreqNode;
+        prevSelectedNode = selectedNode;
+      } else {
+        selectedNode = prevSelectedNode;
       }
+      dataPoint.selectedNode = selectedNode;
+      document.querySelector("#selectedNode").innerHTML = `Node ${selectedNode} Value: ${capValue} IIR Value: ${iirFilteredValue}`;
     }
   }
 });
